@@ -2,25 +2,61 @@
 # See: https://circleci.com/docs/2.0/configuration-reference
 version: 2.1
 
+executors:
+  node-executor:
+    docker:
+      - image: cimg/node:18.4.0
+
 # Define a job to be invoked later in a workflow.
 # See: https://circleci.com/docs/2.0/configuration-reference/#jobs
 jobs:
+  pre-install:
+    executor: node-executor
+    steps:
+      - checkout
+      - run:
+          name: "preinstall"
+          command: "npm run preinstall"
   build:
     # Specify the execution environment. You can specify an image from Dockerhub or use one of our Convenience Images from CircleCI's Developer Hub.
     # See: https://circleci.com/docs/2.0/configuration-reference/#docker-machine-macos-windows-executor
-    docker:
-      - image: cimg/node:18.4.0
+    executor: node-executor
     # Add steps to the job
     # See: https://circleci.com/docs/2.0/configuration-reference/#steps
     steps:
       - checkout
       - run:
-          name: "Node Version"
-          command: "node --version"
+          name: "Build project"
+          command: |
+            "npm run setup"
+            "npm run lint"
+  test:
+    executor: node-executor
+    steps:
+      - checkout
+      - run:
+          name: "Run tests"
+          command: "npm run test"
+  audit:
+    executor: node-executor
+    steps:
+      - checkout
+      - run:
+          name: "Audit Deps"
+          command: "npm audit"
 
 # Invoke jobs via workflows
 # See: https://circleci.com/docs/2.0/configuration-reference/#workflows
 workflows:
   test-node-workflow:
     jobs:
-      - build
+      - pre-install
+      - build:
+          requires:
+            - pre-install
+      - test:
+          requires:
+            - build
+      - audit:
+          requires:
+            - test
